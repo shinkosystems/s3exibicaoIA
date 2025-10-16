@@ -237,7 +237,11 @@ export default function App() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    // ALTERAÇÃO CRÍTICA AQUI:
+    // flex: 1 foi removido/sobrescrito para definir dimensões fixas.
+    width: 990, 
+    height: 600,
+    // O resto é mantido
     backgroundColor: '#fff', 
     paddingTop: 50, 
   },
