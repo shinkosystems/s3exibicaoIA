@@ -52,8 +52,37 @@ export default function App() {
     // Verifica se o array tem o item e o extrai
     const relatorioData = data && data.length > 0 ? data[0] : null;
 
+    if (!relatorioData || !relatorioData.jsonIA) {
+        return null; // Nenhum dado encontrado
+    }
+
+    // =========================================================================
+    // MUDANÇAS CRÍTICAS APLICADAS AQUI:
+    // 1. Acessar a estrutura aninhada (responses[0].output)
+    // 2. Tratar a string de JSON (remover ```json\n) e fazer o parse.
+    // =========================================================================
     
-    return relatorioData ? relatorioData.jsonIA : null; 
+    const relatorioCompleto = relatorioData.jsonIA; 
+    
+    // Acessa a propriedade que contém o JSON formatado como string
+    // Assumimos que o objeto principal (relatorioCompleto) possui a propriedade responses[0].output
+    const respostaAninhada = relatorioCompleto.responses?.[0]?.output;
+    
+    if (!respostaAninhada || typeof respostaAninhada !== 'string') {
+        throw new Error("Estrutura do relatório inválida: o JSON esperado não foi encontrado em responses[0].output.");
+    }
+    
+    // Remove os marcadores de código (```json e ```) e espaços em branco desnecessários.
+    // O modificador 's' garante que '.' também corresponda a quebras de linha (se o JSON estiver em várias linhas)
+    let jsonString = respostaAninhada.replace(/^```json\s*/s, '').replace(/\s*```$/, '');
+    
+    // Tenta fazer o parse da string para objeto JavaScript
+    try {
+        return JSON.parse(jsonString); // Retorna o objeto final para o setParsedData
+    } catch (e) {
+        console.error("Erro ao fazer parse da string JSON aninhada. A string era:", jsonString);
+        throw new Error("Formato de relatório inválido (Erro de JSON Parse): O objeto interno não é um JSON válido.");
+    }
   };
 
 
