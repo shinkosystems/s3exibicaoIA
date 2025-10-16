@@ -237,15 +237,15 @@ export default function App() {
 
 const styles = StyleSheet.create({
   container: {
-    // ALTERAÇÃO CRÍTICA AQUI:
-    // flex: 1 foi removido/sobrescrito para definir dimensões fixas.
-    width: 990, 
-    height: 600,
-    // O resto é mantido
+    // ALTERAÇÃO PARA OCUPAR 100% DO WEBVIEW (o contêiner pai)
+    flex: 1, 
+    // width: 990, // REMOVIDO
+    // height: 600, // REMOVIDO
     backgroundColor: '#fff', 
     paddingTop: 50, 
   },
   scrollView: {
+    // Você pode usar o padding horizontal para simular a largura interna
     paddingHorizontal: 25, 
     paddingBottom: 40,
   },
