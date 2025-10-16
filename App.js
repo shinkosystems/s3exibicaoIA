@@ -31,27 +31,35 @@ export default function App() {
   const [loading, setLoading] = useState(true); // Adiciona estado de carregamento
 
   // Função para buscar os dados (JSON) diretamente da sua tabela do Supabase
-  // Agora ela está dentro do componente para podermos passá-la para o useEffect
   const fetchReportData = async (userId) => {
       
     if (!userId) {
         throw new Error('UUID do usuário não encontrado na URL (parâmetro idusuario).');
     }
-      
+    
+    // =========================================================================
+    // MUDANÇAS CRÍTICAS APLICADAS AQUI:
+    // 1. SELECT na coluna CORRETA ('relatorioJSON' - assumindo que seja o nome real).
+    // 2. ORDENA pelo mais recente (created_at) e LIMITA a 1.
+    // 3. REMOVE '.single()'.
+    // =========================================================================
     const { data, error } = await supabase
         .from('relatoriosIA')
-        .select('jsonIA')
-        // MUDANÇA APLICADA AQUI: Busca pela coluna 'idusuario' usando o UUID
+        .select('relatorioJSON') // Usando 'relatorioJSON' como o nome correto da coluna
         .eq('idusuario', userId) 
-        .single();   
+        .order('created_at', { ascending: false }) // Ordena pelo mais recente
+        .limit(1); // Pega apenas o primeiro (mais recente)
     
     if (error) {
         console.error('Erro ao buscar dados no Supabase:', error);
         throw new Error(error.message || 'Erro desconhecido ao buscar dados.');
     }
 
-    // Retorna o valor da coluna 'jsonIA', que contém seu JSON
-    return data ? data.jsonIA : null; 
+    // Verifica se o array tem o item e o extrai
+    const relatorioData = data && data.length > 0 ? data[0] : null;
+
+    // Retorna o valor da coluna 'relatorioJSON', que contém seu JSON
+    return relatorioData ? relatorioData.relatorioJSON : null; 
   };
 
 
