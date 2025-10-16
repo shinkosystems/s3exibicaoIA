@@ -70,31 +70,31 @@ export default function App() {
         try {
             return JSON.parse(cleanedString); 
         } catch (e) {
-            // Se o parse falhar, retorna null para tentar a próxima abordagem
             return null; 
         }
     };
 
     // =========================================================================
-    // LÓGICA DE EXTRAÇÃO FOCADA (Tentativa de 3 pontos de origem)
+    // LÓGICA DE EXTRAÇÃO REFORÇADA: Prioriza a estrutura final
     // =========================================================================
 
-    // 1. Tenta extrair o JSON do objeto aninhado (se existir)
-    if (typeof jsonCompleto === 'object') {
-        const respostaAninhada = jsonCompleto.responses?.[0]?.output;
-        if (respostaAninhada) {
-            objetoFinal = cleanAndParse(respostaAninhada);
-        }
+    // TENTATIVA A (Mais simples/direta): A coluna JÁ é o objeto que precisamos (Supabase fez o parse)
+    // Usamos esta como prioridade se o Supabase lida com o campo JSONB/JSON corretamente.
+    if (typeof jsonCompleto === 'object' && jsonCompleto.analise_de_maturidade && jsonCompleto.acoes_recomendadas) {
+        objetoFinal = jsonCompleto;
     }
     
-    // 2. Se falhar, tenta extrair o JSON da própria coluna (se for uma string)
+    // TENTATIVA B: O conteúdo da coluna é uma STRING DE JSON (com ou sem marcadores)
     if (!objetoFinal) {
         objetoFinal = cleanAndParse(jsonCompleto);
     }
     
-    // 3. Se ainda falhar, assume que o Supabase já fez o parse e tenta usar o objeto direto
+    // TENTATIVA C: O conteúdo da coluna é um objeto COMPLEXO, e o JSON está aninhado
     if (!objetoFinal && typeof jsonCompleto === 'object') {
-        objetoFinal = jsonCompleto;
+        const respostaAninhada = jsonCompleto.responses?.[0]?.output;
+        if (respostaAninhada) {
+            objetoFinal = cleanAndParse(respostaAninhada);
+        }
     }
     
     // =========================================================================
@@ -110,7 +110,7 @@ export default function App() {
         };
     } 
     
-    // Se nenhuma tentativa funcionou ou se a estrutura final estiver faltando, lança um erro
+    // Se nenhuma tentativa funcionou ou se a estrutura final estiver faltando, lança o erro
     throw new Error("Estrutura do relatório inválida: Não foi possível extrair as chaves 'analise_de_maturidade' e 'acoes_recomendadas' da coluna jsonIA.");
   };
 
