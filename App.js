@@ -36,16 +36,10 @@ export default function App() {
     if (!userId) {
         throw new Error('UUID do usuário não encontrado na URL (parâmetro idusuario).');
     }
-    
-    // =========================================================================
-    // MUDANÇAS CRÍTICAS APLICADAS AQUI:
-    // 1. SELECT na coluna CORRETA ('relatorioJSON' - assumindo que seja o nome real).
-    // 2. ORDENA pelo mais recente (created_at) e LIMITA a 1.
-    // 3. REMOVE '.single()'.
-    // =========================================================================
+
     const { data, error } = await supabase
         .from('relatoriosIA')
-        .select('relatorioJSON') // Usando 'relatorioJSON' como o nome correto da coluna
+        .select('jsonIA') 
         .eq('idusuario', userId) 
         .order('created_at', { ascending: false }) // Ordena pelo mais recente
         .limit(1); // Pega apenas o primeiro (mais recente)
@@ -58,8 +52,8 @@ export default function App() {
     // Verifica se o array tem o item e o extrai
     const relatorioData = data && data.length > 0 ? data[0] : null;
 
-    // Retorna o valor da coluna 'relatorioJSON', que contém seu JSON
-    return relatorioData ? relatorioData.relatorioJSON : null; 
+    
+    return relatorioData ? relatorioData.jsonIA : null; 
   };
 
 
