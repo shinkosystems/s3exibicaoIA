@@ -49,7 +49,6 @@ export default function App() {
         throw new Error(error.message || 'Erro desconhecido ao buscar dados.');
     }
 
-    // Verifica se o array tem o item e o extrai
     const relatorioData = data && data.length > 0 ? data[0] : null;
 
     if (!relatorioData || !relatorioData.jsonIA) {
@@ -58,18 +57,13 @@ export default function App() {
 
     const jsonCompleto = relatorioData.jsonIA; 
     let objetoFinal = null;
-    let jsonString = '';
-
-    // =========================================================================
-    // LÓGICA DE EXTRAÇÃO FLEXÍVEL: Tenta 3 formatos possíveis
-    // =========================================================================
 
     // --- FUNÇÃO AUXILIAR PARA LIMPAR E PARSEAR ---
-    const cleanAndParse = (inputString) => {
-        if (typeof inputString !== 'string') return null;
+    const cleanAndParse = (input) => {
+        if (typeof input !== 'string') return null;
         
         // Remove os marcadores de código (```json e ```)
-        let cleanedString = inputString.replace(/^```json\s*/s, '').replace(/\s*```$/, '');
+        let cleanedString = input.replace(/^```json\s*/s, '').replace(/\s*```$/, '');
         // Remove o caractere ilegal 160 (Non-breaking space)
         cleanedString = cleanedString.replace(/\u00A0/g, ' '); 
 
@@ -81,35 +75,43 @@ export default function App() {
         }
     };
 
-    // --- TENTATIVA A: O conteúdo da coluna é uma STRING DE JSON ---
-    // Isto é, a coluna jsonIA contém o JSON com os marcadores ```json...```
-    objetoFinal = cleanAndParse(jsonCompleto);
+    // =========================================================================
+    // LÓGICA DE EXTRAÇÃO FOCADA (Tentativa de 3 pontos de origem)
+    // =========================================================================
 
-
-    // --- TENTATIVA B: O conteúdo da coluna é um OBJETO, mas o JSON está aninhado em responses[0].output ---
-    if (!objetoFinal && typeof jsonCompleto === 'object') {
+    // 1. Tenta extrair o JSON do objeto aninhado (se existir)
+    if (typeof jsonCompleto === 'object') {
         const respostaAninhada = jsonCompleto.responses?.[0]?.output;
         if (respostaAninhada) {
-             objetoFinal = cleanAndParse(respostaAninhada);
+            objetoFinal = cleanAndParse(respostaAninhada);
         }
     }
     
-    // --- TENTATIVA C: O conteúdo da coluna JÁ É o objeto que precisamos (Supabase fez o parse) ---
-    if (!objetoFinal && typeof jsonCompleto === 'object' && jsonCompleto.analise_de_maturidade) {
+    // 2. Se falhar, tenta extrair o JSON da própria coluna (se for uma string)
+    if (!objetoFinal) {
+        objetoFinal = cleanAndParse(jsonCompleto);
+    }
+    
+    // 3. Se ainda falhar, assume que o Supabase já fez o parse e tenta usar o objeto direto
+    if (!objetoFinal && typeof jsonCompleto === 'object') {
         objetoFinal = jsonCompleto;
     }
     
     // =========================================================================
-    // VALIDAÇÃO FINAL E RETORNO
+    // VALIDAÇÃO FINAL E RETORNO (Retorna apenas as chaves necessárias)
     // =========================================================================
 
     if (objetoFinal && objetoFinal.analise_de_maturidade && objetoFinal.acoes_recomendadas) {
-        // Encontramos o objeto que o componente de exibição espera
-        return objetoFinal;
+        // Encontramos o objeto que o componente de exibição espera.
+        // Retorna APENAS o que é necessário para a exibição, ignorando o resto.
+        return {
+            analise_de_maturidade: objetoFinal.analise_de_maturidade,
+            acoes_recomendadas: objetoFinal.acoes_recomendadas,
+        };
     } 
     
-    // Se nenhuma tentativa funcionou, lançamos um erro
-    throw new Error("Estrutura do relatório inválida: Não foi possível extrair o objeto final (analise_de_maturidade/acoes_recomendadas) da coluna jsonIA.");
+    // Se nenhuma tentativa funcionou ou se a estrutura final estiver faltando, lança um erro
+    throw new Error("Estrutura do relatório inválida: Não foi possível extrair as chaves 'analise_de_maturidade' e 'acoes_recomendadas' da coluna jsonIA.");
   };
 
 
