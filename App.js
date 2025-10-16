@@ -56,33 +56,60 @@ export default function App() {
         return null; // Nenhum dado encontrado
     }
 
+    const jsonCompleto = relatorioData.jsonIA; 
+    let objetoFinal = null;
+    let jsonString = '';
+
     // =========================================================================
-    // MUDANÇAS CRÍTICAS APLICADAS AQUI:
-    // 1. Acessar a estrutura aninhada (responses[0].output)
-    // 2. Tratar a string de JSON (remover ```json\n) e fazer o parse.
+    // LÓGICA DE EXTRAÇÃO FLEXÍVEL: Tenta 3 formatos possíveis
     // =========================================================================
-    
-    const relatorioCompleto = relatorioData.jsonIA; 
-    
-    // Acessa a propriedade que contém o JSON formatado como string
-    // Assumimos que o objeto principal (relatorioCompleto) possui a propriedade responses[0].output
-    const respostaAninhada = relatorioCompleto.responses?.[0]?.output;
-    
-    if (!respostaAninhada || typeof respostaAninhada !== 'string') {
-        throw new Error("Estrutura do relatório inválida: o JSON esperado não foi encontrado em responses[0].output.");
+
+    // --- FUNÇÃO AUXILIAR PARA LIMPAR E PARSEAR ---
+    const cleanAndParse = (inputString) => {
+        if (typeof inputString !== 'string') return null;
+        
+        // Remove os marcadores de código (```json e ```)
+        let cleanedString = inputString.replace(/^```json\s*/s, '').replace(/\s*```$/, '');
+        // Remove o caractere ilegal 160 (Non-breaking space)
+        cleanedString = cleanedString.replace(/\u00A0/g, ' '); 
+
+        try {
+            return JSON.parse(cleanedString); 
+        } catch (e) {
+            // Se o parse falhar, retorna null para tentar a próxima abordagem
+            return null; 
+        }
+    };
+
+    // --- TENTATIVA A: O conteúdo da coluna é uma STRING DE JSON ---
+    // Isto é, a coluna jsonIA contém o JSON com os marcadores ```json...```
+    objetoFinal = cleanAndParse(jsonCompleto);
+
+
+    // --- TENTATIVA B: O conteúdo da coluna é um OBJETO, mas o JSON está aninhado em responses[0].output ---
+    if (!objetoFinal && typeof jsonCompleto === 'object') {
+        const respostaAninhada = jsonCompleto.responses?.[0]?.output;
+        if (respostaAninhada) {
+             objetoFinal = cleanAndParse(respostaAninhada);
+        }
     }
     
-    // Remove os marcadores de código (```json e ```) e espaços em branco desnecessários.
-    // O modificador 's' garante que '.' também corresponda a quebras de linha (se o JSON estiver em várias linhas)
-    let jsonString = respostaAninhada.replace(/^```json\s*/s, '').replace(/\s*```$/, '');
-    
-    // Tenta fazer o parse da string para objeto JavaScript
-    try {
-        return JSON.parse(jsonString); // Retorna o objeto final para o setParsedData
-    } catch (e) {
-        console.error("Erro ao fazer parse da string JSON aninhada. A string era:", jsonString);
-        throw new Error("Formato de relatório inválido (Erro de JSON Parse): O objeto interno não é um JSON válido.");
+    // --- TENTATIVA C: O conteúdo da coluna JÁ É o objeto que precisamos (Supabase fez o parse) ---
+    if (!objetoFinal && typeof jsonCompleto === 'object' && jsonCompleto.analise_de_maturidade) {
+        objetoFinal = jsonCompleto;
     }
+    
+    // =========================================================================
+    // VALIDAÇÃO FINAL E RETORNO
+    // =========================================================================
+
+    if (objetoFinal && objetoFinal.analise_de_maturidade && objetoFinal.acoes_recomendadas) {
+        // Encontramos o objeto que o componente de exibição espera
+        return objetoFinal;
+    } 
+    
+    // Se nenhuma tentativa funcionou, lançamos um erro
+    throw new Error("Estrutura do relatório inválida: Não foi possível extrair o objeto final (analise_de_maturidade/acoes_recomendadas) da coluna jsonIA.");
   };
 
 
@@ -100,6 +127,7 @@ export default function App() {
       }
       
       // 2. BUSCA OS DADOS USANDO O UUID
+      // Se houver erro de parsing ou estrutura, ele será capturado aqui.
       const data = await fetchReportData(userId);
 
       if (!data) {
@@ -108,7 +136,7 @@ export default function App() {
         return;
       }
       
-      // Define os dados (o Supabase já deve retornar o JSON/JSONB como objeto JS)
+      // Define os dados
       setParsedData(data); 
 
     } catch (e) {
