@@ -1,8 +1,13 @@
 // supabase.js
 import { createClient } from '@supabase/supabase-js'
-import Constants from 'expo-constants'; // Ou o método de leitura de .env que você usa
 
-const supabaseUrl = Constants.expoConfig.extra.supabaseUrl;
-const supabaseAnonKey = Constants.expoConfig.extra.supabaseAnonKey;
+// Ajuste a leitura para o padrão de Web/Vercel
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+// Verificação de segurança
+if (!supabaseUrl || !supabaseAnonKey) {
+  // Você pode retornar um erro de inicialização ou usar valores mock
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
